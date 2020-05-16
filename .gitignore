@@ -9,3 +9,4 @@
 .history/
 *.pdf
 *.zip
+.DS_Store/
