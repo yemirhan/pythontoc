@@ -10,6 +10,10 @@
 	extern int yylex();
 	extern int linenum;
 	void yyerror(string s);
+    vector<string> strarray;
+	vector<string> intarray;
+	vector<string> floatarray;
+    string finalOutput="void main()\n{\n";
 	
 %}
 
@@ -19,11 +23,12 @@
 	int inum;
 	float fnum;
 }
-%token PLUS MINUS MULTP DIV QUOTE EQUAL 
-%token <str> VAR
+%token QUOTE EQUAL 
+%token <str> VAR ASSIGN
 %token <inum> INTRSV 
 %token <fnum> FLTRSV
-%left PLUS
+%type <inum> variablestatement types doesexists
+%left ASSIGN
 
 %%
 program:
@@ -39,24 +44,16 @@ variablestatement:
     |
     doesexists
     |
-    variablestatement assignment types
+    variablestatement ASSIGN types
     ;
 types:
-    INTRSV
+    INTRSV {$$ = 1;expr+=to_string($1)+"+";}
     |
-    FLTRSV
+    FLTRSV {$$ = 2;string flt=to_string($1);expr+=flt.substr(0,3)+"+";}
     |
-    QUOTE VAR QUOTE
+    QUOTE VAR QUOTE {$$ = 3;expr+=string($2)+"+";}
     ;
-assignment:
-    PLUS
-    |
-    MINUS
-    |
-    MULTP
-    |
-    DIV
-    ;
+
 doesexists:
 
     ;

@@ -9,4 +9,6 @@
 .history/
 *.pdf
 *.zip
-.DS_Store/
+.DS_Store
+*.out
+*.txt
