@@ -10,7 +10,7 @@ int linenum=1;
 [0-9]+\.[0-9]+ {yylval.fnum = atof(yytext);return FLTRSV;}
 \= return EQUAL;
 \" return QUOTE;
-\+\-\*\/ return ASIGN;
+\+ return PLUS;
 \n	linenum++;
 [ \t]+
 %%
