@@ -47,15 +47,54 @@ variablestatement:
     variablestatement ASSIGN types
     ;
 types:
-    INTRSV {$$ = 1;expr+=to_string($1)+"+";}
+    INTRSV 
+    {
+        $$ = 1;
+        expr+=to_string($1)+"_int";
+    }
     |
-    FLTRSV {$$ = 2;string flt=to_string($1);expr+=flt.substr(0,3)+"+";}
+    FLTRSV 
+    {
+        $$ = 2;
+        string flt=to_string($1);
+        expr+=flt.substr(0,3)+"_flt";
+    }
     |
-    QUOTE VAR QUOTE {$$ = 3;expr+=string($2)+"+";}
+    QUOTE VAR QUOTE 
+    {
+        $$ = 3;
+        expr+=string($2)+"_str";
+    }
     ;
 
 doesexists:
-
+    VAR 
+	{
+		int flag = 0; 
+		for (int i = 0; i < intarray.size(); i++) 
+			if(intarray[i] == string($1)){
+				$$ = 1;
+				expr+=string(intarray[i])+"+";
+				flag++;
+			}
+				
+		for (int i = 0; i < floatarray.size(); i++) 
+			if(floatarray[i] == string($1)){
+				expr+=string(floatarray[i])+"+";
+				$$ = 2;
+				flag++;
+			}
+				
+		for (int i = 0; i < strarray.size(); i++) 
+			if(strarray[i] == string($1)){
+				expr+=string(strarray[i])+"+";
+				$$ = 3;
+				flag++;
+			}
+		if(flag!=1){
+			throwerror(2);
+		}	
+	}
     ;
 %%
 
