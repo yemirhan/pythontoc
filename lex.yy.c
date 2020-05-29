@@ -737,12 +737,12 @@ YY_RULE_SETUP
 case 2:
 YY_RULE_SETUP
 #line 9 "termProject.l"
-{yylval.inum = atoi(yytext);return INTRSV;}
+{yylval.str = strdup(yytext);return INTRSV;}
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
 #line 10 "termProject.l"
-{yylval.fnum = atof(yytext);return FLTRSV;}
+{yylval.str = strdup(yytext);return FLTRSV;}
 	YY_BREAK
 case 4:
 YY_RULE_SETUP

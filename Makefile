@@ -1,8 +1,8 @@
 all: lex yacc
 	g++ lex.yy.c y.tab.c -ll -o project
 
-yacc: termProject.y
-	yacc -d termProject.y
+yacc: tp2.y
+	yacc -d tp2.y
 
 lex: termProject.l
 	lex termProject.l

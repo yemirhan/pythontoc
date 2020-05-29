@@ -12,17 +12,12 @@
 	void yyerror(string s);
 	struct nameStruct {
 		string name;
-		bool integer;
-		bool flt;
-		bool str;
+		bool isInt;
+		bool isFlt;
+		bool isStr;
 		int lasttype;
 	}
 	vector<nameStruct> varArray;
-	vector<string> strarray;
-	vector<string> intarray;
-	vector<string> fltarray;
-	vector<string> storage;
-	map<string,int> lastoneassigned;
     string finalOutput="void main()\n{\n";
 	string expr="";
 	string declpart="";
@@ -46,9 +41,9 @@
 	int inum;
 	float fnum;
 }
-%token QUOTE EQUAL 
-%token <str> VAR ASSIGN INTRSV FLTRSV
-%type <inum> variablestatement types doesexists
+%token QUOTE  
+%token <str> VAR ASSIGN INTRSV FLTRSV EQUAL
+%type <inum> variablestatement types doesexists expression stmtblock
 %left ASSIGN
 
 %%
@@ -59,32 +54,23 @@ program:
     ;
 
 statement:
-	VARIABLE EQUAL expression
+	VAR EQUAL expression
 	{
-		int flag=0;
-		for(int i=0;i<intarray.size();i++)
-			if(intarray[i] == string($1))
-				flag=1;
-		for(int i=0;i<floatarray.size();i++)
-			if(floatarray[i] == string($1))
-				flag=2;
-		for(int i=0;i<strarray.size();i++)
-			if(strarray[i] == string($1))
-				flag=3;
-		if($3==1 && flag==0)
+        int flag = -1; 
+		for (int i = 0; i < varArray.size(); i++) 
+			if(varArray[i].name == string($1)){
+				flag=i;
+		
+		if(flag==-1)
 			intarray.push_back($1);
-		if($3==2 && flag==0)
-			floatarray.push_back($1);
-		if($3==3 && flag==0)
-			strarray.push_back($1);
-		if($3==1 && flag!=0)
-			lastoneassigned[string($1)] = 1;
-		if($3==2 && flag!=0)
-			lastoneassigned[string($1)] = 2;
-		if($3==3 && flag!=0)
-			lastoneassigned[string($1)] = 3;
-		finalOutput+="\t"+string($1)+" = " + expr+";\n";
+        if(flag!=-1)
+            varArray[flag].lastoneassigned = $3
+        if(storage.size()==1)
+		    finalOutput+="\t"+string($1)+" = " + expr+";\n";
+        if(storage.size()==0)
+		    finalOutput+="\t"+string($1)+" = " + string(storage[0])+";\n";
 		expr="";
+        storage.clear();
 	}
     ;
 
@@ -95,77 +81,58 @@ expression:
 		if($1 != $3&&($1==3 || $3==3)){
 			throwerror(1);
 		}
-		if($1==2 || $3 == 2){
+		/*if($1==2 || $3 == 2){
 			$$=2;
-		}
-		expr+=string(storage[0])+ string($2) + string(storage[1]);
+		}*/
+        if(storage.size()==2)
+		    expr+=string(storage[0])+ string($2) + string(storage[1]);
+        if(storage.size()==2)
+		    expr+=string($2) + string(storage[1]);
+        
 		storage.clear();
 	}
-	|
-	OPENPAR expression CLOSEPAR            { $$ = $2; }
     ;
 stmtblock:
-	types
+	types {$$=$1;}
 	|
-	doesexists
+	doesexists {$$=$1;}
 	;
 types:
     INTRSV 
     {
         $$ = 1;
-        expr+=string($1);
+        storage.push_back(string($1));
     }
     |
     FLTRSV 
     {
         $$ = 2;
-        expr+=string($1);
+        storage.push_back(string($1));
     }
     |
     QUOTE VAR QUOTE 
     {
         $$ = 3;
-        expr+=string($2);
+        storage.push_back(string($2));
     }
     ;
 
 doesexists:
 	VAR 
 	{
-		int flag = 0; 
-		for (int i = 0; i < intarray.size(); i++) 
-			if(intarray[i] == string($1)){
-				flag=1;
-				if(lastoneassigned[string($1)]==1){
-					storage.push_back(string(intarray[i]));
-					$$ = 1;
-					flag=4;
-				}
-
-			}
-				
-		for (int i = 0; i < floatarray.size(); i++) 
-			if(floatarray[i] == string($1)){
-				flag=2;
-				if(lastoneassigned[string($1)]==1){
-					storage.push_back(string(fltarray[i]));
-					$$ = 2;
-					flag=5;
-				}
-			}
-				
-		for (int i = 0; i < strarray.size(); i++) 
-			if(strarray[i] == string($1)){
-				flag=3;
-				if(lastoneassigned[string($1)]==1){
-					storage.push_back(string(strarray[i]));
-					$$ = 3;
-					flag=6;
-				}
-			}
-		if(flag!=1){
+		int flag = -1; 
+		for (int i = 0; i < varArray.size(); i++) 
+			if(vararray[i].name == string($1)){
+				flag=i;
+		if(flag==-1)
 			throwerror(2);
-		}
+        if(varArray[i].type==1 && varArray[i].isInt)
+            $$=1;
+        if(varArray[i].type==2 && varArray[i].isFlt)
+            $$=2;
+        if(varArray[i].type==3 && varArray[i].isStr)
+            $$=3;
+        storage.push_back(string($1));
 	}
 	;
 %%
