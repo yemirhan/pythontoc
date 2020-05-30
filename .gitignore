@@ -12,3 +12,5 @@
 .DS_Store
 *.out
 *.txt
+*.c
+*.h

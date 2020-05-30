@@ -1,1 +1,7 @@
-a = 3.1 + 14 - 5 * 1 / 8
+d = 8
+f = 3.14
+g = d + 3
+a = "integer"
+a = 10
+a = "integer"
+g = d
