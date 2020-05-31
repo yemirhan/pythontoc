@@ -9,21 +9,25 @@
 	extern FILE *yyin;
 	extern int yylex();
 	extern int linenum;
+	extern int tabamount;
+	int openedifs=1;
 	void yyerror(string s);
 	struct nameStruct {
 		string name;
-		bool integer;
-		bool flt;
-		bool str;
+		bool isInt;
+		bool isFlt;
+		bool isStr;
 		int lasttype;
-	}
+		nameStruct(string s, bool i, bool f, bool str, int lt){
+			name = s;
+			isInt = i;
+			isFlt = f;
+			isStr = str;
+			lasttype = lt;
+		}
+	};
 	vector<nameStruct> varArray;
-	vector<string> strarray;
-	vector<string> intarray;
-	vector<string> fltarray;
-	vector<string> storage;
-	map<string,int> lastoneassigned;
-    string finalOutput="void main()\n{\n";
+    string finalOutput="\t";
 	string expr="";
 	string declpart="";
 	void throwerror(int i){
@@ -35,8 +39,12 @@
 			cout << "Untyped variable is used in line: " << linenum << endl;
 			exit(1);
 		}
+		if(i==3){ //Tab inconstincency 
+			cout << "Tab inconstincency in line: " << linenum << endl;
+			exit(1);
+		}
 	}
-
+	vector <string> storage;
 	FILE *output;
 %}
 
@@ -46,125 +54,121 @@
 	int inum;
 	float fnum;
 }
-%token QUOTE EQUAL 
-%token <str> VAR ASSIGN INTRSV FLTRSV
-%type <inum> variablestatement types doesexists
+%token QUOTE  
+%token <str> VAR ASSIGN INTRSV FLTRSV EQUAL
+%type <inum> typelist selector isdefined operations
 %left ASSIGN
 
 %%
 program:
-    statement
+	statement
 	|
 	statement program
-    ;
-
+	;
 statement:
-	VARIABLE EQUAL expression
+	VAR EQUAL operations 
 	{
-		int flag=0;
-		for(int i=0;i<intarray.size();i++)
-			if(intarray[i] == string($1))
-				flag=1;
-		for(int i=0;i<floatarray.size();i++)
-			if(floatarray[i] == string($1))
-				flag=2;
-		for(int i=0;i<strarray.size();i++)
-			if(strarray[i] == string($1))
-				flag=3;
-		if($3==1 && flag==0)
-			intarray.push_back($1);
-		if($3==2 && flag==0)
-			floatarray.push_back($1);
-		if($3==3 && flag==0)
-			strarray.push_back($1);
-		if($3==1 && flag!=0)
-			lastoneassigned[string($1)] = 1;
-		if($3==2 && flag!=0)
-			lastoneassigned[string($1)] = 2;
-		if($3==3 && flag!=0)
-			lastoneassigned[string($1)] = 3;
-		finalOutput+="\t"+string($1)+" = " + expr+";\n";
+		int flag = -1;
+		for (int i = 0;i< varArray.size();i++)
+			if (varArray[i].name == string($1))
+				flag = i;
+		if(flag==-1){
+			struct nameStruct varname = nameStruct(string($1), false,false,false,0);
+			if($3 == 1)
+				varname.isInt = true;
+			if($3 == 2)
+				varname.isFlt = true;
+			if($3 == 3)
+				varname.isStr = true;
+			varname.lasttype = $3;
+			varArray.push_back(varname);
+		}
+		else {
+			if($3 == 1)
+				varArray[flag].isInt = true;
+			if($3 == 2)
+				varArray[flag].isFlt = true;
+			if($3 == 3)
+				varArray[flag].isStr = true;
+			varArray[flag].lasttype = $3;
+		}
+		string alt="";
+			if($3 == 1)
+				alt+=string($1)+"_int";
+			if($3 == 2)
+				alt+=string($1)+"_flt";
+			if($3 == 3)
+				alt+=string($1)+"_str";
+		if(expr!="")
+			finalOutput+=alt+" = " +expr+";\n";
+		else
+			finalOutput+=alt+" = " +storage[0]+";\n";
+		for(int i = 0;i<tabamount;i++)
+			finalOutput+="\t";
+		if(tabamount != openedifs)
+			throwerror(3);
 		expr="";
+		storage.clear();
 	}
-    ;
-
-expression:
-    stmtblock
-    |
-	expression ASSIGN expression     { 
+	;
+operations:
+	selector {$$ = $1;}
+	|
+	operations ASSIGN operations {
 		if($1 != $3&&($1==3 || $3==3)){
 			throwerror(1);
 		}
 		if($1==2 || $3 == 2){
 			$$=2;
 		}
-		expr+=string(storage[0])+ string($2) + string(storage[1]);
+        if(storage.size()==2)
+		    expr+=string(storage[0])+ " "+ string($2) +" "+ string(storage[1]);
+        if(storage.size()==1)
+		    expr+=" "+ string($2) +" "+ string(storage[0]);
 		storage.clear();
 	}
-	|
-	OPENPAR expression CLOSEPAR            { $$ = $2; }
-    ;
-stmtblock:
-	types
-	|
-	doesexists
 	;
-types:
-    INTRSV 
-    {
-        $$ = 1;
-        expr+=string($1);
-    }
-    |
-    FLTRSV 
-    {
-        $$ = 2;
-        expr+=string($1);
-    }
-    |
-    QUOTE VAR QUOTE 
-    {
-        $$ = 3;
-        expr+=string($2);
-    }
-    ;
-
-doesexists:
-	VAR 
+selector:
+	typelist {$$ = $1;}
+	|
+	isdefined {$$ = $1;}
+	;
+typelist:
+	INTRSV {$$ = 1;storage.push_back($1);}
+	|
+	FLTRSV {$$ = 2;storage.push_back($1);}
+	|
+	QUOTE VAR QUOTE {$$ = 3;string alt = "\""+ string($2)+"\"";storage.push_back(alt);}
+	|
+	QUOTE INTRSV QUOTE {$$ = 3;string alt = "\""+ string($2)+"\"";storage.push_back(alt);}
+	|
+	QUOTE FLTRSV QUOTE {$$ = 3;string alt = "\""+ string($2)+"\"";storage.push_back(alt);}
+	;
+isdefined:
+	VAR
 	{
-		int flag = 0; 
-		for (int i = 0; i < intarray.size(); i++) 
-			if(intarray[i] == string($1)){
-				flag=1;
-				if(lastoneassigned[string($1)]==1){
-					storage.push_back(string(intarray[i]));
-					$$ = 1;
-					flag=4;
-				}
-
-			}
-				
-		for (int i = 0; i < floatarray.size(); i++) 
-			if(floatarray[i] == string($1)){
-				flag=2;
-				if(lastoneassigned[string($1)]==1){
-					storage.push_back(string(fltarray[i]));
-					$$ = 2;
-					flag=5;
-				}
-			}
-				
-		for (int i = 0; i < strarray.size(); i++) 
-			if(strarray[i] == string($1)){
-				flag=3;
-				if(lastoneassigned[string($1)]==1){
-					storage.push_back(string(strarray[i]));
-					$$ = 3;
-					flag=6;
-				}
-			}
-		if(flag!=1){
+		int flag = -1;
+		for (int i = 0;i< varArray.size();i++)
+			if (varArray[i].name == string($1))
+				flag = i;
+		if(flag == -1)
 			throwerror(2);
+		else {
+			if(varArray[flag].lasttype==1 && varArray[flag].isInt){
+				$$=1;
+				storage.push_back(string($1)+"_int");
+			}
+            	
+			if(varArray[flag].lasttype==2 && varArray[flag].isFlt){
+				$$=2;
+				storage.push_back(string($1)+"_flt");
+			}
+				
+			if(varArray[flag].lasttype==3 && varArray[flag].isStr){
+				$$=3;
+				storage.push_back(string($1)+"_str");
+			}
+				
 		}
 	}
 	;
@@ -179,168 +183,43 @@ int yywrap(){
 
 int main(int argc, char *argv[])
 {
-    /* Call the lexer, then quit. */
-
     yyin=fopen(argv[1],"r");
     yyparse();
     fclose(yyin);
+	vector<string> intarray;
+	vector<string> floatarray;
+	vector<string> strarray;
+	for (int i = 0;i< varArray.size();i++){
+		if(varArray[i].isStr == true)
+			strarray.push_back(varArray[i].name + "_str");
+		if(varArray[i].isInt == true)
+			intarray.push_back(varArray[i].name + "_int");
+		if(varArray[i].isFlt == true)
+			floatarray.push_back(varArray[i].name + "_flt");
+	}
+	cout << "void main()\n{\n";
 	if(intarray.size()>0){
-		cout <<"int "; 
-		declpart+="int ";
+		cout <<"\tint "; 
 		for (int i = 0; i < intarray.size()-1; i++){
-        	cout << intarray[i] << ", "; 
-			declpart+=string(intarray[i])+", ";
+        	cout << intarray[i] << ","; 
 		}
 		cout << intarray[intarray.size()-1] << ";\n"; 
-		declpart+=string(intarray[intarray.size()-1])+";\n";
 	}
 	if(floatarray.size()>0){
-		cout <<"float "; 
-		declpart+="float ";
+		cout <<"\tfloat "; 
 		for (int i = 0; i < floatarray.size()-1; i++) {
-        	cout << floatarray[i] << ", "; 
-			declpart+=string(floatarray[i])+", ";
+        	cout << floatarray[i] << ","; 
 		}
 		cout << floatarray[floatarray.size()-1] << ";\n"; 
-		declpart+=string(floatarray[floatarray.size()-1])+";\n";
 	}
 	if(strarray.size()>0){
-		cout <<"string "; 
-		declpart+="string ";
+		cout <<"\tstring "; 
 		for (int i = 0; i < strarray.size()-1; i++) {
-        	cout << strarray[i] << ", "; 
-			declpart+=string(strarray[i])+", ";
+        	cout << strarray[i] << ","; 
 		}
 		cout << strarray[strarray.size()-1] << ";\n"; 
-		declpart+=string(strarray[strarray.size()-1])+";\n";
 	}
-	cout << "\n";
-	cout << finalOutput;
-	output=fopen(argv[2],"w");
-	fprintf(output,"%s\n%s",declpart.c_str(),finalOutput.c_str());
-	fclose(output);
+	cout <<"\n"<<finalOutput.substr(0,finalOutput.length()-1);
+	cout << "}"<<endl;
     return 0;
 }
-
-/*
-
-program:
-    statement
-	|
-	statement program
-    ;
-statement:
-    VAR EQUAL variablestatement{
-		int flag=0;
-		for(int i=0;i<intarray.size();i++)
-			if(intarray[i] == string($1))
-				flag++;
-		for(int i=0;i<floatarray.size();i++)
-			if(floatarray[i] == string($1))
-				flag++;
-		for(int i=0;i<strarray.size();i++)
-			if(strarray[i] == string($1))
-				flag++;
-		if($3==1 && flag==0)
-			intarray.push_back($1);
-		if($3==2 && flag==0)
-			floatarray.push_back($1);
-		if($3==3 && flag==0)
-			strarray.push_back($1);
-		finalOutput+="\t"+string($1)+" = " + expr.substr(0,expr.length()-1)+";\n";
-		expr="";
-	}
-    ;
-variablestatement:
-    types
-    |
-    doesexists
-    |
-    variablestatement ASSIGN types
-	{
-		if($1 != $3&&($1==3 || $3==3)){
-			throwerror(1);
-		}
-		if($1==2 || $3 == 2){
-			$$=2;
-		}
-		expr+=string($2);
-	}
-	|
-	variablestatement ASSIGN doesexists
-	{
-		if($1 != $3&&($1==3 || $3==3)){
-			throwerror(1);
-		}
-		if($1==2 || $3 == 2){
-			$$=2;
-		}
-		expr+=string($2);
-	}
-    ;
-types:
-    INTRSV 
-    {
-        $$ = 1;
-        expr+=to_string($1);
-    }
-    |
-    FLTRSV 
-    {
-        $$ = 2;
-        string flt=to_string($1);
-        expr+=flt.substr(0,3);
-    }
-    |
-    QUOTE VAR QUOTE 
-    {
-        $$ = 3;
-        expr+=string($2);
-    }
-    ;
-
-doesexists:
-    VAR 
-	{
-		int flag = 0; 
-		string intstr = string($1) + "_int";
-		for (int i = 0; i < intarray.size(); i++) 
-			if(intarray[i] == intstr){
-				$$ = 1;
-				expr+=string(intarray[i]);
-				flag++;
-			}
-		
-		string fltstr = string($1) + "_flt";
-		for (int i = 0; i < floatarray.size(); i++) 
-			if(floatarray[i] == fltstr){
-				expr+=string(floatarray[i]);
-				$$ = 2;
-				flag++;
-			}
-				
-		string strstr = string($1) + "_str";
-		for (int i = 0; i < strarray.size(); i++) 
-			if(strarray[i] == strstr){
-				expr+=string(strarray[i]);
-				$$ = 3;
-				flag++;
-			}
-		if(flag!=1){
-			throwerror(2);
-		}	
-	}
-    ;
-*/
-/*
-
-*/
-
-/*
-if 
-if else
-if elseif else
-
-
-
-*/

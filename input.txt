@@ -1,6 +1,6 @@
 d = 8
 f = 3.14
-g = d + 3
+g = d + 3 - 8
 a = "integer"
 a = 10
 a = "integer"

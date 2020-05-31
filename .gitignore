@@ -12,5 +12,6 @@
 .DS_Store
 *.out
 *.txt
-*.c
-*.h
+y.tab.c
+y.tab.h
+lex.yy.c
